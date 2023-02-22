@@ -3,7 +3,10 @@ from json import loads
 from os import getenv
 import snscrape.modules.twitter as sntwitter
 from pymongo import MongoClient
+from dotenv import load_dotenv
 
+
+load_dotenv('/opt/.env')
 RABBIT_MQ = getenv("RABBIT_MQ")
 
 MONGO_URL = getenv("MONGO_URL")

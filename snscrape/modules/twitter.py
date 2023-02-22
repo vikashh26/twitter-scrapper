@@ -249,7 +249,7 @@ class Tweet(snscrape.base.Item):
 				"analytics.like_count":int(like_count),
 				"analytics.retweet_count":int(retweet_count),
 				"analytics.followers_count":int(followers_count),
-				"analytics.impression_count":int(impression_count)
+				"analytics.impression_count":int(impression_count) if impression_count else 0
 			}},upsert=True)
 			print("---------------------------------------------------------------------")
 		except Exception as ex:

@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 
 
-load_dotenv('/opt/.env')
+load_dotenv('./.env')
 RABBIT_MQ = getenv("RABBIT_MQ")
 
 MONGO_URL = getenv("MONGO_URL")

@@ -213,7 +213,6 @@ class Tweet(snscrape.base.Item):
 				"created_at":self.date,
 				"geo":place,
 				"impression_count":self.viewCount,
-				"vibe_count":self.vibe,
 				"in_reply_to_user_id":str(self.inReplyToUser.id) if self.inReplyToUser else "",
 				"lang":self.lang,
 				"like_count":self.likeCount,
@@ -241,16 +240,16 @@ class Tweet(snscrape.base.Item):
 			print("--------------- updating trend ---------------")
 			print("trendId : " , trend_id)
 			status = db.trends.update_one({"_id":trend_id},{"$inc":{
-				"analytics.verified":verified,
-				"analytics.new":new,
-				"analytics.organic":organic,
-				"analytics.ghost":ghost,
-				"analytics.local_user":local_user,
-				"analytics.users":users,
-				"analytics.like_count":like_count,
-				"analytics.retweet_count":retweet_count,
-				"analytics.followers_count":followers_count,
-				"analytics.impression_count":impression_count
+				"analytics.verified":int(verified),
+				"analytics.new":int(new),
+				"analytics.organic":int(organic),
+				"analytics.ghost":int(ghost),
+				"analytics.local_user":int(local_user),
+				"analytics.users":int(users),
+				"analytics.like_count":int(like_count),
+				"analytics.retweet_count":int(retweet_count),
+				"analytics.followers_count":int(followers_count),
+				"analytics.impression_count":int(impression_count)
 			}},upsert=True)
 			print("---------------------------------------------------------------------")
 		except Exception as ex:

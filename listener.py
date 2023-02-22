@@ -44,6 +44,8 @@ class RabbitMqListener:
     def process_task(self):
         since_id = self.job.get('since_id')
         trend_name = self.job.get('trend_name')
+        if not trend_name:
+            return None
         trend_id = self.job.get('_id')
         campaign_id = self.job.get('campaign_id')
         print(f' [i] processing {trend_name}...')

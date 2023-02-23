@@ -178,7 +178,6 @@ class Tweet(snscrape.base.Item):
 			if old_user:
 				new = user['new'] - old_user['new']
 				organic = user['organic'] - old_user['organic']
-				ghost = user['ghost'] - old_user['ghost']
 				local_user = user['local_user'] - old_user['local_user']
 				verified = user['verified'] - old_user['verified']
 				users = user['users'] - old_user['users']
@@ -187,7 +186,6 @@ class Tweet(snscrape.base.Item):
 			else:
 				new = user['new']
 				organic = user['organic']
-				ghost = user['ghost']
 				local_user = user['local_user']
 				verified = user['verified']
 				users = user['users']
@@ -275,7 +273,6 @@ class Tweet(snscrape.base.Item):
 				"analytics.verified":int(verified) if verified else 0,
 				"analytics.new":int(new) if new else 0,
 				"analytics.organic":int(organic) if organic else 0,
-				# "analytics.ghost":int(ghost) if ghost else 0,
 				"analytics.local_user":int(local_user) if local_user else 0,
 				"analytics.users":int(users) if users else 0,
 				"analytics.like_count":int(like_count) if like_count else 0,

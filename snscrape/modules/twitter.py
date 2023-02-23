@@ -133,7 +133,7 @@ class Tweet(snscrape.base.Item):
 				row['created_at'] = row['created_at'].replace(tzinfo=None)
 				row['new'] = 1 if (datetime.datetime.now() - datetime.timedelta(days=30)) < row['created_at'] else 0
 				row['organic'] = 1 if (row['followers_count'] > 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) > (row['created_at'])) else 0
-				row['ghost'] = 1 if (row['followers_count'] < 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) < (row['created_at'])) else 0
+				# row['ghost'] = 1 if (row['followers_count'] < 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) < (row['created_at'])) else 0
 				row['local_user'] = 1 if row['followers_count'] < 10 else 0
 				row['verified'] = 0 if not row['verified'] else 1
 				row['users'] = 1
@@ -162,8 +162,15 @@ class Tweet(snscrape.base.Item):
 				try:
 					print(data.json())
 					data = data.json().get("Data")[0]
-					status = db.users.update_one({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
-					user['ghost'] = data.get("Bot")
+					status = db.users.find_one_and_update({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
+					if status:
+						ghost = data.get("Bot") - status.get("ghost",0)
+					else:
+						ghost = data.get("Bot")
+					db.trends.update_one({"_id":trend_id},{"$inc":{
+						"analytics.ghost":int(ghost) if ghost else 0,
+						
+					}},upsert=True)
 				except Exception as e:
 					print(f"Error {e}")
 
@@ -268,7 +275,7 @@ class Tweet(snscrape.base.Item):
 				"analytics.verified":int(verified) if verified else 0,
 				"analytics.new":int(new) if new else 0,
 				"analytics.organic":int(organic) if organic else 0,
-				"analytics.ghost":int(ghost) if ghost else 0,
+				# "analytics.ghost":int(ghost) if ghost else 0,
 				"analytics.local_user":int(local_user) if local_user else 0,
 				"analytics.users":int(users) if users else 0,
 				"analytics.like_count":int(like_count) if like_count else 0,

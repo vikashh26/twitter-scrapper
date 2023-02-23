@@ -242,6 +242,7 @@ class Tweet(snscrape.base.Item):
 				"like_count":self.likeCount,
 				"processed_time":int(time.time()),
 				"quote_count":self.quoteCount,
+				"links":[i.url for i in self.links] if self.links else [],
 				# "referenced_tweets":self.retweetedTweet,
 				"reply_count":self.replyCount,
 				"retweet_count":self.retweetCount,

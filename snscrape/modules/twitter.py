@@ -37,6 +37,7 @@ import urllib.parse
 import urllib3.util.ssl_
 import warnings
 import pytz
+from threading import Thread
 
 
 # DescriptionURL deprecation
@@ -146,16 +147,27 @@ class Tweet(snscrape.base.Item):
 
 			def check_bot(userName=user.get("username")):
 				url = "https://analytics-api.anveshan.org/api/v1/user/usernames"
-				data = requests.post(url=url,data={"usernames":[userName]})
+
+				payload = json.dumps({
+				"usernames": [
+					userName
+				]
+				})
+				headers = {
+				'Content-Type': 'application/json'
+				}
+
+				data = requests.request("POST", url, headers=headers, data=payload)
+
 				try:
+					print(data.json())
 					data = data.json().get("Data")[0]
-					print(data)
 					status = db.users.update_one({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
 					user['ghost'] = data.get("Bot")
 				except Exception as e:
 					print(f"Error {e}")
 
-			check_bot()
+			Thread(target=check_bot).start()
 			if old_user:
 				new = user['new'] - old_user['new']
 				organic = user['organic'] - old_user['organic']

@@ -27,6 +27,7 @@ import random
 import logging
 import os
 import re
+import requests
 import requests.adapters
 import snscrape.base
 import string
@@ -110,7 +111,6 @@ class Tweet(snscrape.base.Item):
 			user = {
 				"created_at" : user.created,
 				"description" : user.rawDescription,
-				
 				"fetched_time" : int(time.time()),
 				"followers_count" : user.followersCount,
 				"following_count" : user.friendsCount,
@@ -129,7 +129,6 @@ class Tweet(snscrape.base.Item):
 			}
 			
 			def assign_tag(row):
-
 				row['created_at'] = row['created_at'].replace(tzinfo=None)
 				row['new'] = 1 if (datetime.datetime.now() - datetime.timedelta(days=30)) < row['created_at'] else 0
 				row['organic'] = 1 if (row['followers_count'] > 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) > (row['created_at'])) else 0
@@ -137,13 +136,26 @@ class Tweet(snscrape.base.Item):
 				row['local_user'] = 1 if row['followers_count'] < 10 else 0
 				row['verified'] = 0 if not row['verified'] else 1
 				row['users'] = 1
+
 				
 				return row
 			
 			user = assign_tag(user)
 
 			old_user = db.users.find_one_and_update({"_id":user_id},{"$set":user},upsert=True)
-			
+
+			def check_bot(userName=user.get("username")):
+				url = "https://analytics-api.anveshan.org/api/v1/user/usernames"
+				data = requests.post(url=url,data={"usernames":[userName]})
+				try:
+					data = data.json().get("Data")[0]
+					print(data)
+					status = db.users.update_one({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
+					user['ghost'] = data.get("Bot")
+				except Exception as e:
+					print(f"Error {e}")
+
+			check_bot()
 			if old_user:
 				new = user['new'] - old_user['new']
 				organic = user['organic'] - old_user['organic']

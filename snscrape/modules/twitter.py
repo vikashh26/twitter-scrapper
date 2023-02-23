@@ -240,15 +240,15 @@ class Tweet(snscrape.base.Item):
 			print("--------------- updating trend ---------------")
 			print("trendId : " , trend_id)
 			status = db.trends.update_one({"_id":trend_id},{"$inc":{
-				"analytics.verified":int(verified),
-				"analytics.new":int(new),
-				"analytics.organic":int(organic),
-				"analytics.ghost":int(ghost),
-				"analytics.local_user":int(local_user),
-				"analytics.users":int(users),
-				"analytics.like_count":int(like_count),
-				"analytics.retweet_count":int(retweet_count),
-				"analytics.followers_count":int(followers_count),
+				"analytics.verified":int(verified) if verified else 0,
+				"analytics.new":int(new) if new else 0,
+				"analytics.organic":int(organic) if organic else 0,
+				"analytics.ghost":int(ghost) if ghost else 0,
+				"analytics.local_user":int(local_user) if local_user else 0,
+				"analytics.users":int(users) if users else 0,
+				"analytics.like_count":int(like_count) if like_count else 0,
+				"analytics.retweet_count":int(retweet_count) if retweet_count else 0,
+				"analytics.followers_count":int(followers_count) if followers_count else 0,
 				"analytics.impression_count":int(impression_count) if impression_count else 0
 			}},upsert=True)
 			print("---------------------------------------------------------------------")

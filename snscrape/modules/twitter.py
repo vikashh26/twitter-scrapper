@@ -146,7 +146,7 @@ class Tweet(snscrape.base.Item):
 			old_user = db.users.find_one_and_update({"_id":user_id},{"$set":user},upsert=True)
 
 			def check_bot(userName=user.get("username")):
-				url = "https://analytics-api.anveshan.org/api/v1/user/usernames"
+				url = "https://analytics-api.anveshan.org/api/v1/user/bot_pred/usernames"
 
 				payload = json.dumps({
 				"usernames": [

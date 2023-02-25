@@ -13,6 +13,7 @@ MONGO_URL = getenv("MONGO_URL")
 MONGO_DB_NAME = getenv("MONGO_DB_NAME")
 
 QUEUE = getenv("TREND_QUEUE")
+botQ = getenv("BOT_QUEUE")
 
 TWEETS = 100
 
@@ -41,6 +42,16 @@ class RabbitMqListener:
     def stop_consuming(self):
         self.channel.stop_consuming()
 
+    def init_channel(self,Q):
+        connection = pika.BlockingConnection(
+            pika.URLParameters(RABBIT_MQ))
+        channel = connection.channel()
+        channel.queue_declare(queue=Q, durable=True)
+        return channel
+
+    def destroy_channel(self,channel):
+        channel.close()
+
     def process_task(self):
         since_id = self.job.get('since_id')
         trend_name = self.job.get('trend_name')
@@ -49,13 +60,15 @@ class RabbitMqListener:
         trend_id = self.job.get('_id')
         campaign_id = self.job.get('campaign_id')
         print(f' [i] processing {trend_name}...')
+        bot = self.init_channel(botQ)
         for i,tweet in enumerate(sntwitter.TwitterSearchScraper(trend_name).get_items()):
             tweet_id = str(tweet.id)
             if i == TWEETS or since_id == tweet_id:
                 break
 
-            tweet.insert_tweet(mongo_db,trend_id,trend_name,campaign_id)
+            tweet.insert_tweet(mongo_db,trend_id,trend_name,campaign_id,botQ,bot)
 
+        self.destroy_channel(bot)
         print("Done !!!")
         return True
 

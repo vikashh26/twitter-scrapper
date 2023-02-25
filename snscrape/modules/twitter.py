@@ -16,6 +16,7 @@ __all__ = [
 
 import collections
 import copy
+import pika
 import dataclasses
 import datetime
 import email.utils
@@ -37,8 +38,7 @@ import urllib.parse
 import urllib3.util.ssl_
 import warnings
 import pytz
-from threading import Thread
-
+from bson import json_util
 
 # DescriptionURL deprecation
 _DEPRECATED_NAMES = {'DescriptionURL': 'TextLink'}
@@ -99,7 +99,7 @@ class Tweet(snscrape.base.Item):
 
 	def insert_tweet(self,db,
 		  trend_id,
-		  trend,campaigns):
+		  trend,campaigns,QUE,channel):
 		try:
 			"""
 			This method inserts tweets into the database :)
@@ -122,6 +122,7 @@ class Tweet(snscrape.base.Item):
 				"profile_image_url" : user.profileImageUrl,
 				"protected" : user.protected,
 				"tweet_count" : user.statusesCount,
+				"favourites_count":user.favouritesCount,
 				"url" : user.url,
 				"username" : user.username,
 				"verified" : user.verified,
@@ -145,36 +146,36 @@ class Tweet(snscrape.base.Item):
 
 			old_user = db.users.find_one_and_update({"_id":user_id},{"$set":user},upsert=True)
 
-			def check_bot(userName=user.get("username")):
-				url = "https://analytics-api.anveshan.org/api/v1/user/bot_pred/usernames"
+			# def check_bot(userName=user.get("username")):
+			# 	url = "https://analytics-api.anveshan.org/api/v1/user/bot_pred/usernames"
 
-				payload = json.dumps({
-				"usernames": [
-					userName
-				]
-				})
-				headers = {
-				'Content-Type': 'application/json'
-				}
+			# 	payload = json.dumps({
+			# 	"usernames": [
+			# 		userName
+			# 	]
+			# 	})
+			# 	headers = {
+			# 	'Content-Type': 'application/json'
+			# 	}
 
-				data = requests.request("POST", url, headers=headers, data=payload)
+			# 	data = requests.request("POST", url, headers=headers, data=payload)
 
-				try:
-					print(data.json())
-					data = data.json().get("Data")[0]
-					status = db.users.find_one_and_update({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
-					if status:
-						ghost = data.get("Bot") - status.get("ghost",0)
-					else:
-						ghost = data.get("Bot")
-					db.trends.update_one({"_id":trend_id},{"$inc":{
-						"analytics.ghost":int(ghost) if ghost else 0,
+			# 	try:
+			# 		print(data.json())
+			# 		data = data.json().get("Data")[0]
+			# 		status = db.users.find_one_and_update({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
+			# 		if status:
+			# 			ghost = data.get("Bot") - status.get("ghost",0)
+			# 		else:
+			# 			ghost = data.get("Bot")
+			# 		db.trends.update_one({"_id":trend_id},{"$inc":{
+			# 			"analytics.ghost":int(ghost) if ghost else 0,
 						
-					}},upsert=True)
-				except Exception as e:
-					print(f"Error {e}")
+			# 		}},upsert=True)
+			# 	except Exception as e:
+			# 		print(f"Error {e}")
 
-			Thread(target=check_bot).start()
+			# Thread(target=check_bot).start()
 			if old_user:
 				new = user['new'] - old_user['new']
 				organic = user['organic'] - old_user['organic']
@@ -182,6 +183,7 @@ class Tweet(snscrape.base.Item):
 				verified = user['verified'] - old_user['verified']
 				users = user['users'] - old_user['users']
 				followers_count = user['followers_count'] - old_user['followers_count']
+				old_found = True
 
 			else:
 				new = user['new']
@@ -189,7 +191,32 @@ class Tweet(snscrape.base.Item):
 				local_user = user['local_user']
 				verified = user['verified']
 				users = user['users']
-				followers_count = user['followers_count'] 
+				followers_count = user['followers_count']
+				old_found = False
+
+			user_meta = {
+				"new":new,
+				"organic":organic,
+				"local_user":local_user,
+				"verified":verified,
+				"users":users,
+				"followers_count":followers_count,
+				"old_found":old_found
+			}
+
+			que = {
+				"body":user,
+				"meta":user_meta,
+				"trend_id":trend_id
+			}
+
+			channel.basic_publish(
+				exchange='',
+				routing_key=QUE,
+				body=json_util.dumps(que),
+				properties=pika.BasicProperties(
+				delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE
+			))
 
 			print("user added!!!")
 			print("--------- Adding Tweet -------------------")
@@ -214,8 +241,6 @@ class Tweet(snscrape.base.Item):
 						"preview_image_url":i.thumbnailUrl
 					})
 
-					
-			
 			place = {}
 			if self.place:
 				place = {
@@ -228,6 +253,14 @@ class Tweet(snscrape.base.Item):
 					"geo" : {"lat":self.coordinates.latitude,"lon":self.coordinates.longitude} if self.coordinates else {}
 					,"place_type" : self.place.type
 				}
+
+			refernce_tweet = {}
+			if self.retweetedTweet:
+				refernce_tweet['id'] = str(self.retweetedTweet.id)
+				refernce_tweet['type'] = "retweeted"
+			elif self.quotedTweet:
+				refernce_tweet['id'] = str(self.quotedTweet.id)
+				refernce_tweet['type'] = "quotedTweet"
 
 			tweet = {
 				"sourceUrl":self.sourceUrl,
@@ -248,7 +281,7 @@ class Tweet(snscrape.base.Item):
 				"processed_time":int(time.time()),
 				"quote_count":self.quoteCount,
 				"links":[i.url for i in self.links] if self.links else [],
-				# "referenced_tweets":self.retweetedTweet,
+				"referenced_tweets":refernce_tweet, # TODO: Fix it
 				"reply_count":self.replyCount,
 				"retweet_count":self.retweetCount,
 				"text":self.rawContent,
@@ -270,14 +303,8 @@ class Tweet(snscrape.base.Item):
 			print("--------------- updating trend ---------------")
 			print("trendId : " , trend_id)
 			status = db.trends.update_one({"_id":trend_id},{"$inc":{
-				"analytics.verified":int(verified) if verified else 0,
-				"analytics.new":int(new) if new else 0,
-				"analytics.organic":int(organic) if organic else 0,
-				"analytics.local_user":int(local_user) if local_user else 0,
-				"analytics.users":int(users) if users else 0,
 				"analytics.like_count":int(like_count) if like_count else 0,
 				"analytics.retweet_count":int(retweet_count) if retweet_count else 0,
-				"analytics.followers_count":int(followers_count) if followers_count else 0,
 				"analytics.impression_count":int(impression_count) if impression_count else 0
 			}},upsert=True)
 			print("---------------------------------------------------------------------")

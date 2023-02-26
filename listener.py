@@ -15,7 +15,7 @@ MONGO_DB_NAME = getenv("MONGO_DB_NAME")
 QUEUE = getenv("TREND_QUEUE")
 botQ = getenv("BOT_QUEUE")
 
-TWEETS = 100
+TWEETS = 500
 
 mongo_db = MongoClient(MONGO_URL)[MONGO_DB_NAME]
 

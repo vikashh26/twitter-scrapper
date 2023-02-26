@@ -134,7 +134,7 @@ class Tweet(snscrape.base.Item):
 				row['created_at'] = row['created_at'].replace(tzinfo=None)
 				row['new'] = 1 if (datetime.datetime.now() - datetime.timedelta(days=30)) < row['created_at'] else 0
 				row['organic'] = 1 if (row['followers_count'] > 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) > (row['created_at'])) else 0
-				# row['ghost'] = 1 if (row['followers_count'] < 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) < (row['created_at'])) else 0
+				row['ghost'] = 1 if (row['followers_count'] < 10 and (datetime.datetime.now() - datetime.timedelta(days=30)) < (row['created_at'])) else 0
 				row['local_user'] = 1 if row['followers_count'] < 10 else 0
 				row['verified'] = 0 if not row['verified'] else 1
 				row['users'] = 1
@@ -146,36 +146,6 @@ class Tweet(snscrape.base.Item):
 
 			old_user = db.users.find_one_and_update({"_id":user_id},{"$set":user},upsert=True)
 
-			# def check_bot(userName=user.get("username")):
-			# 	url = "https://analytics-api.anveshan.org/api/v1/user/bot_pred/usernames"
-
-			# 	payload = json.dumps({
-			# 	"usernames": [
-			# 		userName
-			# 	]
-			# 	})
-			# 	headers = {
-			# 	'Content-Type': 'application/json'
-			# 	}
-
-			# 	data = requests.request("POST", url, headers=headers, data=payload)
-
-			# 	try:
-			# 		print(data.json())
-			# 		data = data.json().get("Data")[0]
-			# 		status = db.users.find_one_and_update({"_id":user_id},{"$set":{"ghost":data.get("Bot"),"botProbability":data.get("Bot Probability")}})
-			# 		if status:
-			# 			ghost = data.get("Bot") - status.get("ghost",0)
-			# 		else:
-			# 			ghost = data.get("Bot")
-			# 		db.trends.update_one({"_id":trend_id},{"$inc":{
-			# 			"analytics.ghost":int(ghost) if ghost else 0,
-						
-			# 		}},upsert=True)
-			# 	except Exception as e:
-			# 		print(f"Error {e}")
-
-			# Thread(target=check_bot).start()
 			if old_user:
 				new = user['new'] - old_user['new']
 				organic = user['organic'] - old_user['organic']
@@ -183,7 +153,7 @@ class Tweet(snscrape.base.Item):
 				verified = user['verified'] - old_user['verified']
 				users = user['users'] - old_user['users']
 				followers_count = user['followers_count'] - old_user['followers_count']
-				old_found = True
+				ghost = user['ghost'] - old_user['ghost']
 
 			else:
 				new = user['new']
@@ -192,7 +162,7 @@ class Tweet(snscrape.base.Item):
 				verified = user['verified']
 				users = user['users']
 				followers_count = user['followers_count']
-				old_found = False
+				ghost = user['ghost']
 
 			user_meta = {
 				"new":new,
@@ -201,7 +171,7 @@ class Tweet(snscrape.base.Item):
 				"verified":verified,
 				"users":users,
 				"followers_count":followers_count,
-				"old_found":old_found
+				"ghost":user['ghost']
 			}
 
 			que = {
@@ -303,11 +273,19 @@ class Tweet(snscrape.base.Item):
 			print("--------------- updating trend ---------------")
 			print("trendId : " , trend_id)
 			status = db.trends.update_one({"_id":trend_id},{"$inc":{
+				"analytics.new":int(new) if new else 0,
+				"analytics.organic":int(organic) if organic else 0,
+				"analytics.local_user":int(local_user) if local_user else 0,
+				"analytics.verified":int(verified) if verified else 0,
+				"analytics.users":int(users) if users else 0,
+				"analytics.followers_count":int(followers_count) if followers_count else 0,
+				"analytics.ghost":int(ghost) if ghost else 0,
 				"analytics.like_count":int(like_count) if like_count else 0,
 				"analytics.retweet_count":int(retweet_count) if retweet_count else 0,
 				"analytics.impression_count":int(impression_count) if impression_count else 0
 			}},upsert=True)
 			print("---------------------------------------------------------------------")
+
 		except Exception as ex:
 			print("failed - ",ex)
 	def __str__(self):
